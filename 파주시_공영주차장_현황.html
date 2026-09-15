@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>파주시 공영주차장 찾기</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+    :root {
+        --primary-color: #0056b3;
+        --accent-color: #fd7e14;
+        --secondary-color: #f8f9fa;
+        --border-color: #dee2e6;
+        --text-color: #333;
+    }
+    body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; color: var(--text-color); margin: 0; padding: 0; }
+    header { background-color: var(--primary-color); color: white; padding: 2.5rem 1rem; text-align: center; }
+    header h1 { margin: 0 0 0.5rem 0; font-size: 2rem; }
+    header p { margin: 0; font-size: 1.1rem; opacity: 0.9; }
+    .container { max-width: 1100px; margin: -30px auto 2rem auto; padding: 0 1rem; }
+    .filters { display: flex; gap: 1rem; margin-bottom: 1rem; background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex-wrap: wrap; }
+    .filter-group { display: flex; flex: 1; min-width: 200px; gap: 0.5rem; }
+    .filters select, .filters input { flex: 1; min-width: 150px; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 1rem; outline: none; }
+    .filters select { cursor: pointer; }
+    .filters select:focus, .filters input:focus { border-color: var(--primary-color); }
+    .search-btn { padding: 0.8rem 1.2rem; border: none; border-radius: 6px; background-color: var(--primary-color); color: white; font-size: 1rem; cursor: pointer; white-space: nowrap; }
+    .search-btn:hover { background-color: #003d80; }
+    .result-count { margin: 0 0 1rem 4px; color: #555; font-size: 0.95rem; }
+    .restaurant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    .group-header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; background-color: var(--primary-color); color: white; padding: 0.9rem 1.3rem; border-radius: 8px; margin-top: 1rem; font-size: 1.15rem; font-weight: bold; }
+    .group-header:first-child { margin-top: 0; }
+    .group-count { font-size: 0.9rem; font-weight: 500; opacity: 0.9; }
+    .card { background: white; border-radius: 10px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid transparent; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); border-color: var(--primary-color); }
+    .card h3 { margin: 0 0 0.8rem 0; color: #222; font-size: 1.3rem; }
+    .card p { margin: 0.3rem 0; font-size: 0.95rem; color: #555; line-height: 1.4; }
+    .badge-container { margin-bottom: 1rem; }
+    .badge { display: inline-block; padding: 0.3rem 0.7rem; font-size: 0.8rem; font-weight: bold; border-radius: 20px; color: white; margin-right: 0.4rem; }
+    .badge.category-main { background-color: var(--primary-color); }
+    .badge.category-temp { background-color: #6c757d; }
+    .badge.fee-free { background-color: #28a745; }
+    .badge.fee-paid { background-color: var(--accent-color); }
+    .price-box { background-color: #eef4fb; border: 1px solid #cfe0f5; border-radius: 8px; padding: 0.7rem 0.9rem; margin: 0.8rem 0 0.3rem 0; }
+    .price-box .price-label { display: block; font-size: 0.8rem; font-weight: bold; color: var(--primary-color); margin-bottom: 0.3rem; }
+    .price-box .price-items { font-size: 0.92rem; color: #444; line-height: 1.55; }
+    .phone-line { font-size: 0.9rem; color: #555; margin-top: 0.5rem; }
+    .no-result { grid-column: 1 / -1; text-align: center; padding: 3rem; color: #777; background: white; border-radius: 10px; font-size: 1.1rem; }
+    .map-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.8rem;
+        padding: 0.5rem 0.9rem;
+        background-color: #03c75a;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+    .map-btn:hover { background-color: #02a94e; }
+    footer.note { max-width: 1100px; margin: 0 auto 2rem auto; padding: 0 1rem; font-size: 0.85rem; color: #888; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>파주시 공영주차장</h1>
+    <p id="subTitle">공영주차장 현황</p>
+</header>
+
+<div class="container">
+    <div class="filters">
+        <div class="filter-group">
+            <input type="text" id="searchInput" placeholder="🔍 주차장명 검색">
+            <button class="search-btn" onclick="filterData()">검색</button>
+        </div>
+        <div class="filter-group">
+            <select id="regionFilter" onchange="filterData()">
+                <option value="all">📍 지역 전체</option>
+                <option value="운정">운정</option>
+                <option value="금촌">금촌/금릉</option>
+                <option value="문산">문산</option>
+                <option value="탄현">탄현</option>
+                <option value="교하">교하</option>
+                <option value="조리">조리</option>
+                <option value="법원">법원</option>
+                <option value="광탄">광탄</option>
+                <option value="월롱">월롱</option>
+                <option value="적성">적성</option>
+                <option value="파평">파평</option>
+                <option value="장단">장단</option>
+                <option value="파주">파주</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="categoryFilter" onchange="filterData()">
+                <option value="all">🅿️ 구분 전체</option>
+                <option value="공영주차장">공영주차장</option>
+                <option value="임시공영주차장">임시공영주차장</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="feeFilter" onchange="filterData()">
+                <option value="all">💰 요금 전체</option>
+                <option value="무료">무료</option>
+                <option value="유료">유료</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="groupFilter" onchange="filterData()">
+                <option value="none">📋 묶어보기 없음</option>
+                <option value="region" selected>📍 지역별로 묶어보기</option>
+                <option value="category">🅿️ 구분별로 묶어보기</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="result-count" id="resultCount"></div>
+
+    <div id="restaurantList" class="restaurant-list">
+        <!-- JS를 통해 카드가 렌더링됩니다 -->
+    </div>
+</div>
+
+<footer class="note">
+    ※ 출처: 파주시 공영주차장·임시공영주차장 현황 자료 (파주시 홈페이지 기준, 공영주차장 28개소 3,954면 · 임시공영주차장 47개소 2,709면, 총 75개소 6,663면). 실제 운영 현황은 파주시 또는 파주파킹(parking.paju.go.kr)에서 다시 확인하시기 바랍니다.
+</footer>
+
+<script>
+    // 파주시 공영주차장 데이터
+    // 항목: name(명칭), address(위치/지번), area(면적㎡), spaces(면수), fee(유료/무료), spot(세부위치), built(조성년월), region(지역), category(구분)
+    const restaurants = [
+        {"name": "시청", "address": "경기도 파주시 아동동 215-1", "area": "25,490", "spaces": 382, "fee": "유료", "spot": "파주시청 내", "built": "'06년03월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌역", "address": "경기도 파주시 금촌동 329-1", "area": "798", "spaces": 10, "fee": "무료", "spot": "금촌역 앞", "built": "'98년06월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌1", "address": "경기도 파주시 금촌동 971", "area": "1,136", "spaces": 33, "fee": "무료", "spot": "뜨란채1단지 앞", "built": "'06년08월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌2", "address": "경기도 파주시 금촌동 987-1", "area": "2,924", "spaces": 318, "fee": "유료", "spot": "뜨란채3단지 앞", "built": "'09년07월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌3", "address": "경기도 파주시 금촌동 990-5", "area": "1,944", "spaces": 60, "fee": "유료", "spot": "우체국 앞", "built": "'06년07월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌4", "address": "경기도 파주시 금능동 432-3", "area": "373", "spaces": 16, "fee": "무료", "spot": "신 경찰서 앞", "built": "'06년07월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌8", "address": "경기도 파주시 금촌동 936-21", "area": "439", "spaces": 15, "fee": "무료", "spot": "금촌1동원룸지역", "built": "'06년11월", "region": "금촌", "category": "공영주차장"},
+        {"name": "금촌통일시장", "address": "경기도 파주시 금촌동 323-4", "area": "1,758", "spaces": 136, "fee": "유료", "spot": "금촌통일시장", "built": "'18년12월", "region": "금촌", "category": "공영주차장"},
+        {"name": "문산고가다리", "address": "경기도 파주시 선유리 957-31", "area": "1,600", "spaces": 40, "fee": "유료", "spot": "문산고가다리", "built": "'92년10월", "region": "문산", "category": "공영주차장"},
+        {"name": "문산4", "address": "경기도 파주시 내포리 69-5외4", "area": "2,641", "spaces": 80, "fee": "무료", "spot": "문산빗물펌프장 옆", "built": "'06년10월", "region": "문산", "category": "공영주차장"},
+        {"name": "문산자유시장", "address": "경기도 파주시 문산리 8-2", "area": "1,518", "spaces": 123, "fee": "유료", "spot": "문산자유시장", "built": "'17년08월", "region": "문산", "category": "공영주차장"},
+        {"name": "법원2", "address": "경기도 파주시 법원리 438-1외3", "area": "1,895", "spaces": 49, "fee": "무료", "spot": "법원우체국 뒤", "built": "'05년10월", "region": "법원", "category": "공영주차장"},
+        {"name": "법원3", "address": "경기도 파주시 법원리 674-1", "area": "2,989", "spaces": 40, "fee": "무료", "spot": "오메가볼링장 옆", "built": "'07년05월", "region": "법원", "category": "공영주차장"},
+        {"name": "가야1", "address": "경기도 파주시 가야리 380-2", "area": "1,078", "spaces": 33, "fee": "무료", "spot": "무건리이주단지 내", "built": "'14년08월", "region": "법원", "category": "공영주차장"},
+        {"name": "가야2", "address": "경기도 파주시 가야리 380-27", "area": "603", "spaces": 26, "fee": "무료", "spot": "무건리이주단지 내", "built": "'14년08월", "region": "법원", "category": "공영주차장"},
+        {"name": "통일동산", "address": "경기도 파주시 성동리 646", "area": "55,044", "spaces": 1248, "fee": "유료", "spot": "통일동산 광장", "built": "'92년10월", "region": "탄현", "category": "공영주차장"},
+        {"name": "광탄경매시장", "address": "경기도 파주시 신산리 222-7", "area": "1,236", "spaces": 35, "fee": "유료", "spot": "광탄경매시장", "built": "'18년07월", "region": "광탄", "category": "공영주차장"},
+        {"name": "광탄2", "address": "경기도 파주시 신산리 232외2", "area": "3,293", "spaces": 118, "fee": "무료", "spot": "광탄中운동장 지하", "built": "'06년04월", "region": "광탄", "category": "공영주차장"},
+        {"name": "적성마지", "address": "경기도 파주시 마지리 36-98외1", "area": "1,000", "spaces": 52, "fee": "무료", "spot": "낙원여인숙 뒤", "built": "'92년03월", "region": "적성", "category": "공영주차장"},
+        {"name": "적성구읍", "address": "경기도 파주시 구읍리 588-5", "area": "1,330", "spaces": 31, "fee": "무료", "spot": "하모니마트 앞", "built": "'13년01월", "region": "적성", "category": "공영주차장"},
+        {"name": "월롱2", "address": "경기도 파주시 위전리 168외1", "area": "1,898", "spaces": 72, "fee": "무료", "spot": "월롱역 옆", "built": "'09년06월", "region": "월롱", "category": "공영주차장"},
+        {"name": "운정역 환승", "address": "경기도 파주시 운정역 지하", "area": "5,882", "spaces": 378, "fee": "유료", "spot": "운정역 지하", "built": "'12년02월", "region": "운정", "category": "공영주차장"},
+        {"name": "금파리", "address": "경기도 파주시 금파리 528", "area": "586", "spaces": 28, "fee": "무료", "spot": "금파리", "built": "-", "region": "장단", "category": "공영주차장"},
+        {"name": "동파리", "address": "경기도 파주시 동파리 1749-2", "area": "532", "spaces": 24, "fee": "무료", "spot": "동파리", "built": "-", "region": "장단", "category": "공영주차장"},
+        {"name": "가람마을공원 지하", "address": "경기도 파주시 와동동 1591 지하", "area": "10,216", "spaces": 235, "fee": "유료", "spot": "가람마을공원", "built": "'21년11월", "region": "운정", "category": "공영주차장"},
+        {"name": "야당역 환승", "address": "경기도 파주시 야당동 1087", "area": "4,774", "spaces": 305, "fee": "유료", "spot": "야당역 앞", "built": "'21년12월", "region": "운정", "category": "공영주차장"},
+        {"name": "앵골과선교 하부", "address": "경기도 파주시 야당동 469-136", "area": "1,270", "spaces": 39, "fee": "무료", "spot": "앵골과선교 하부", "built": "'20년9월", "region": "운정", "category": "공영주차장"},
+        {"name": "법원시가지 우회도로", "address": "경기도 파주시 대능리 226-11", "area": "1,006", "spaces": 28, "fee": "무료", "spot": "대능리 우회도로", "built": "'20년6월", "region": "법원", "category": "공영주차장"},
+        {"name": "금촌1-8", "address": "경기도 파주시 아동동 358-3", "area": "786", "spaces": 24, "fee": "무료", "spot": "158-2버스종점 옆", "built": "'07년07월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌2-8", "address": "경기도 파주시 금촌동 1025", "area": "4,837", "spaces": 140, "fee": "유료", "spot": "금촌택지2지구(교육청부지)", "built": "'06년03월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌2-15", "address": "경기도 파주시 금촌동 1017", "area": "1,200", "spaces": 40, "fee": "무료", "spot": "희망농장 입구", "built": "'10년04월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌5", "address": "경기도 파주시 금촌동 948-21", "area": "524", "spaces": 20, "fee": "무료", "spot": "로타리뒤편(재경부)", "built": "'06년03월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌7", "address": "경기도 파주시 금촌동 951-7", "area": "310", "spaces": 15, "fee": "무료", "spot": "장안하나아파트 앞(시유지)", "built": "'06년07월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌2-16", "address": "경기도 파주시 금촌동 938-18", "area": "413", "spaces": 13, "fee": "무료", "spot": "로터리 빌딩 앞", "built": "'10년11월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌2-17", "address": "경기도 파주시 금촌동 771-2", "area": "3,224", "spaces": 54, "fee": "유료", "spot": "보훈회관 앞", "built": "'10년12월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "금촌역 선로하부", "address": "경기도 파주시 아동동 308-2", "area": "2,799", "spaces": 56, "fee": "유료", "spot": "금촌역 선로하부", "built": "'19년05월", "region": "금촌", "category": "임시공영주차장"},
+        {"name": "문산1", "address": "경기도 파주시 문산리 37-5외2", "area": "3,654", "spaces": 58, "fee": "유료", "spot": "문산시장 내(주공아파트앞)", "built": "'05년01월", "region": "문산", "category": "임시공영주차장"},
+        {"name": "문산2", "address": "경기도 파주시 문산리 31-9외1", "area": "1,318", "spaces": 36, "fee": "무료", "spot": "문산중앙병원 뒤", "built": "'12년04월", "region": "문산", "category": "임시공영주차장"},
+        {"name": "문산5", "address": "경기도 파주시 선유리 447-3외1", "area": "611", "spaces": 17, "fee": "무료", "spot": "대한주유소 건너편", "built": "'07년04월", "region": "문산", "category": "임시공영주차장"},
+        {"name": "문산역 앞", "address": "경기도 파주시 문산리 17-134", "area": "596", "spaces": 17, "fee": "무료", "spot": "문산역 1번출구", "built": "'21년12월", "region": "문산", "category": "임시공영주차장"},
+        {"name": "적암리 희망", "address": "경기도 파주시 적암리 66-4", "area": "8,131", "spaces": 232, "fee": "무료", "spot": "-", "built": "'14년12월", "region": "문산", "category": "임시공영주차장"},
+        {"name": "조리1-2", "address": "경기도 파주시 봉일천리 144-10", "area": "878", "spaces": 24, "fee": "무료", "spot": "SM마트 뒤", "built": "'08년07월", "region": "조리", "category": "임시공영주차장"},
+        {"name": "교하1", "address": "경기도 파주시 다율동 999-12", "area": "240", "spaces": 10, "fee": "무료", "spot": "-", "built": "'12년04월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "교하1-1", "address": "경기도 파주시 서패동 52-2", "area": "1,784", "spaces": 40, "fee": "무료", "spot": "심학산둘레길", "built": "'12년04월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "교하2", "address": "경기도 파주시 다율동 991-12", "area": "237", "spaces": 10, "fee": "무료", "spot": "-", "built": "'12년04월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "교하2-1", "address": "경기도 파주시 서패동 8-4", "area": "3,000", "spaces": 105, "fee": "무료", "spot": "심학산둘레길", "built": "'12년04월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "심학산배수지입구", "address": "경기도 파주시 동패동 643-3", "area": "2,660", "spaces": 96, "fee": "무료", "spot": "심학산배수지입구", "built": "'20년05월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "문발초교1", "address": "경기도 파주시 문발동 549-4", "area": "691", "spaces": 22, "fee": "무료", "spot": "-", "built": "'20년05월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "문발초교2", "address": "경기도 파주시 문발동 554-2", "area": "501", "spaces": 14, "fee": "무료", "spot": "-", "built": "'20년05월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "운정1", "address": "경기도 파주시 야당동 1002", "area": "1,630", "spaces": 50, "fee": "무료", "spot": "-", "built": "'11년08월", "region": "운정", "category": "임시공영주차장"},
+        {"name": "운정2", "address": "경기도 파주시 와동동 1304-2", "area": "8,283", "spaces": 183, "fee": "무료", "spot": "맑은교회 옆", "built": "'11년11월", "region": "운정", "category": "임시공영주차장"},
+        {"name": "운정호수공원", "address": "경기도 파주시 와동동 1408", "area": "12,881", "spaces": 186, "fee": "무료", "spot": "운정호수공원", "built": "'20년01월", "region": "운정", "category": "임시공영주차장"},
+        {"name": "한울마을", "address": "경기도 파주시 동패동 1892", "area": "2,014", "spaces": 42, "fee": "무료", "spot": "-", "built": "'14년04월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "산내마을1", "address": "경기도 파주시 목동동 1078", "area": "1,986", "spaces": 58, "fee": "무료", "spot": "산내중학교 앞", "built": "'17년12월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "산내마을2", "address": "경기도 파주시 목동동 953", "area": "6,070", "spaces": 251, "fee": "유료", "spot": "참존교회 앞", "built": "'18년12월", "region": "교하", "category": "임시공영주차장"},
+        {"name": "파주1", "address": "경기도 파주시 연풍리 407-1외3", "area": "1,355", "spaces": 40, "fee": "무료", "spot": "현대오토바이 옆", "built": "'06년08월", "region": "파주", "category": "임시공영주차장"},
+        {"name": "파주2", "address": "경기도 파주시 연풍리 404-1외2", "area": "421", "spaces": 15, "fee": "무료", "spot": "현대오토바이 건너편", "built": "'07년07월", "region": "파주", "category": "임시공영주차장"},
+        {"name": "파주4", "address": "경기도 파주시 파주리 429-1외1", "area": "2,037", "spaces": 60, "fee": "무료", "spot": "파주읍(구)청사", "built": "'09년06월", "region": "파주", "category": "임시공영주차장"},
+        {"name": "법원1", "address": "경기도 파주시 법원리 442-1외2", "area": "665", "spaces": 20, "fee": "무료", "spot": "법원파출소 옆(궁전빌라)", "built": "'06년10월", "region": "법원", "category": "임시공영주차장"},
+        {"name": "하천부지", "address": "경기도 파주시 법원리 431-14외3", "area": "508", "spaces": 18, "fee": "무료", "spot": "-", "built": "'10년03월", "region": "법원", "category": "임시공영주차장"},
+        {"name": "법원6", "address": "경기도 파주시 법원리 679-15", "area": "1,154", "spaces": 34, "fee": "무료", "spot": "-", "built": "'16년07월", "region": "법원", "category": "임시공영주차장"},
+        {"name": "법원7", "address": "경기도 파주시 법원리 431-10", "area": "573", "spaces": 18, "fee": "무료", "spot": "-", "built": "'18년07월", "region": "법원", "category": "임시공영주차장"},
+        {"name": "천현초교", "address": "경기도 파주시 법원리 443-16", "area": "305", "spaces": 17, "fee": "무료", "spot": "-", "built": "'20년08월", "region": "법원", "category": "임시공영주차장"},
+        {"name": "법원행복주택", "address": "경기도 파주시 대능리 556", "area": "1,414", "spaces": 42, "fee": "무료", "spot": "-", "built": "'20년08월", "region": "법원", "category": "임시공영주차장"},
+        {"name": "파주역", "address": "경기도 파주시 봉암리 850-4", "area": "2,152", "spaces": 56, "fee": "무료", "spot": "-", "built": "'15년", "region": "파주", "category": "임시공영주차장"},
+        {"name": "파평1-1", "address": "경기도 파주시 장파리 370-2", "area": "241", "spaces": 8, "fee": "무료", "spot": "임진강별장 앞", "built": "'07년10월", "region": "파평", "category": "임시공영주차장"},
+        {"name": "파평1-2", "address": "경기도 파주시 장파리 370-200", "area": "400", "spaces": 17, "fee": "무료", "spot": "임진강별장 앞", "built": "'07년10월", "region": "파평", "category": "임시공영주차장"},
+        {"name": "파평2", "address": "경기도 파주시 장파리 377-8", "area": "1,050", "spaces": 21, "fee": "무료", "spot": "-", "built": "'12년04월", "region": "파평", "category": "임시공영주차장"},
+        {"name": "한태말", "address": "경기도 파주시 영태리 642-1", "area": "484", "spaces": 18, "fee": "무료", "spot": "-", "built": "'13년", "region": "파평", "category": "임시공영주차장"},
+        {"name": "영태리", "address": "경기도 파주시 영태리 572-2", "area": "396", "spaces": 15, "fee": "무료", "spot": "-", "built": "'15년12월", "region": "파평", "category": "임시공영주차장"},
+        {"name": "탄현", "address": "경기도 파주시 금승리 600", "area": "750", "spaces": 22, "fee": "무료", "spot": "-", "built": "'12년04월", "region": "탄현", "category": "임시공영주차장"},
+        {"name": "탄현1", "address": "경기도 파주시 성동리 702", "area": "3,500", "spaces": 205, "fee": "무료", "spot": "-", "built": "'12년04월", "region": "탄현", "category": "임시공영주차장"},
+        {"name": "축현리", "address": "경기도 파주시 축현리 485-7", "area": "590", "spaces": 15, "fee": "무료", "spot": "-", "built": "'13년11월", "region": "탄현", "category": "임시공영주차장"},
+        {"name": "헤이리GATE1", "address": "경기도 파주시 법흥리 1652-281외5", "area": "5,790", "spaces": 189, "fee": "무료", "spot": "-", "built": "'14년05월", "region": "탄현", "category": "임시공영주차장"},
+        {"name": "이등병마을", "address": "경기도 파주시 신산리 575-1", "area": "3,032", "spaces": 66, "fee": "무료", "spot": "-", "built": "'21년10월", "region": "광탄", "category": "임시공영주차장"}
+    ];
+
+    // 지역/구분 표시 순서
+    const regionOrder = ["운정", "금촌", "문산", "탄현", "교하", "조리", "법원", "광탄", "월롱", "적성", "파평", "장단", "파주"];
+    const categoryOrder = ["공영주차장", "임시공영주차장"];
+    const regionLabels = { "금촌": "금촌/금릉" };
+
+    // 카드 1개 렌더링용 HTML 생성 (주차장명 기반 네이버 지도 검색 링크)
+    function createCard(item) {
+        // 주차장명 + 지역명을 함께 검색어로 사용해 동명 시설 혼동을 줄임
+        const mapQuery = `${item.name} 주차장 파주 ${item.region}`;
+        const encodedQuery = encodeURIComponent(mapQuery);
+        const naverMapUrl = `https://map.naver.com/p/search/${encodedQuery}`;
+        const categoryBadgeClass = item.category === "공영주차장" ? "category-main" : "category-temp";
+        const feeBadgeClass = item.fee === "무료" ? "fee-free" : "fee-paid";
+        const spotHtml = (item.spot && item.spot !== "-")
+            ? `<p class="phone-line">📌 ${item.spot}</p>`
+            : '';
+        const builtHtml = (item.built && item.built !== "-")
+            ? `<p class="phone-line">🛠️ 조성 ${item.built}</p>`
+            : '';
+
+        return `
+            <div class="card">
+                <div class="badge-container">
+                    <span class="badge ${categoryBadgeClass}">${item.category}</span>
+                    <span class="badge ${feeBadgeClass}">${item.fee}</span>
+                </div>
+                <h3>${item.name}</h3>
+                <p>${item.address}</p>
+                <div class="price-box">
+                    <span class="price-label">🅿️ 규모</span>
+                    <span class="price-items">면적 ${item.area}㎡ · ${item.spaces}면</span>
+                </div>
+                ${spotHtml}
+                ${builtHtml}
+                <a class="map-btn" href="${naverMapUrl}" target="_blank" rel="noopener noreferrer">
+                    🗺️ 네이버 지도에서 위치 보기
+                </a>
+            </div>
+        `;
+    }
+
+    // 검색어/지역/구분/요금 조건에 맞춰 필터링 후 화면 갱신
+    function filterData() {
+        const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+        const region = document.getElementById('regionFilter').value;
+        const category = document.getElementById('categoryFilter').value;
+        const fee = document.getElementById('feeFilter').value;
+        const group = document.getElementById('groupFilter').value;
+
+        const filtered = restaurants.filter(item => {
+            const matchKeyword = keyword === '' || item.name.toLowerCase().includes(keyword);
+            const matchRegion = region === 'all' || item.region === region;
+            const matchCategory = category === 'all' || item.category === category;
+            const matchFee = fee === 'all' || item.fee === fee;
+            return matchKeyword && matchRegion && matchCategory && matchFee;
+        });
+
+        // 그룹 내 정렬은 상호명 가나다순
+        filtered.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+        renderList(filtered, group);
+    }
+
+    // 리스트 렌더링 및 결과 수, 총 면수 표시 (묶어보기 지원)
+    function renderList(list, group = 'none') {
+        const listEl = document.getElementById('restaurantList');
+        const countEl = document.getElementById('resultCount');
+
+        const totalSpaces = list.reduce((sum, item) => sum + item.spaces, 0);
+        countEl.textContent = `총 ${list.length}개소 검색됨 · ${totalSpaces.toLocaleString()}면 (전체 ${restaurants.length}개소 중)`;
+
+        if (list.length === 0) {
+            listEl.innerHTML = '<div class="no-result">검색 조건에 맞는 주차장이 없습니다.</div>';
+            return;
+        }
+
+        // 묶어보기 없음: 평면 리스트 (가나다순)
+        if (group === 'none') {
+            listEl.innerHTML = list.map(createCard).join('');
+            return;
+        }
+
+        // 지역별 또는 구분별로 묶어서 섹션 헤더와 함께 렌더링
+        const field = group === 'region' ? 'region' : 'category';
+        const baseOrder = group === 'region' ? regionOrder : categoryOrder;
+
+        // 정해진 순서에 없는 값이 데이터에 있어도 누락되지 않도록 뒤에 덧붙임
+        const extraKeys = [...new Set(list.map(item => item[field]))].filter(k => !baseOrder.includes(k));
+        const keyOrder = [...baseOrder, ...extraKeys];
+
+        let html = '';
+        keyOrder.forEach(key => {
+            const items = list.filter(item => item[field] === key);
+            if (items.length === 0) return;
+            const label = group === 'region' ? (regionLabels[key] || key) : key;
+            const groupSpaces = items.reduce((sum, item) => sum + item.spaces, 0);
+            html += `<div class="group-header"><span>${label}</span><span class="group-count">${items.length}개소 · ${groupSpaces.toLocaleString()}면</span></div>`;
+            html += items.map(createCard).join('');
+        });
+        listEl.innerHTML = html;
+    }
+
+    // 엔터 키로도 검색 가능하도록 처리
+    document.getElementById('searchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') filterData();
+    });
+
+    // 페이지 최초 로드: 헤더 개수 자동 표시 + 지역별 묶어보기(기본값)로 전체 목록 표시
+    window.addEventListener('DOMContentLoaded', () => {
+        const totalSpaces = restaurants.reduce((sum, item) => sum + item.spaces, 0);
+        document.getElementById('subTitle').textContent = `공영주차장 현황 · 총 ${restaurants.length}개소 ${totalSpaces.toLocaleString()}면 수록`;
+        filterData();
+    });
+</script>
+</body>
+</html>
